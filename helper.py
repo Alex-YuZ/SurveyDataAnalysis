@@ -95,4 +95,27 @@ def higher_ed_mapping(df, edu_levels):
     df['higher_ed'] = df.FormalEducation.isin(edu_levels).astype('int')
     prop = df['higher_ed'].mean()
     return df, prop
-    
+   
+   
+def ord_cat_convert(df, col, order_list):
+    """[summary]
+
+    Args:
+        df (pd.DataFrame): dataset of the developers survey
+        col (str): categorical feature you want to convert to be ordered
+        order_list (list): customized order for the feature to be transformed to
+    """
+    ordered_type = pd.api.types.CategoricalDtype(ordered=True, categories=order_list)
+    df[col] = df[col].astype(ordered_type) 
+
+
+def job_satisfaction_byGroup(df, by_col):
+    """Averaged job satisfaction by a given categorical feature
+
+    Args:
+        df (pd.DataFrame): dataset of the developers survey
+        by_col (str): categorical feature you want to group by
+    """
+    res_srs = df.groupby(by_col).JobSatisfaction.mean().sort_values(ascending=False)
+    res_df = res_srs.rename('Avg_JobSatisfaction').to_frame()
+    print(res_df)
