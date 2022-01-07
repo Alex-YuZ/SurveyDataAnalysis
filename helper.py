@@ -49,32 +49,36 @@ def get_description(schema, feature_name):
     return desc
 
 
-def method_suggested_count(df, plot=True):
-    """[summary]
+def pct_by_method(df, title=None, plot=True):
+    """percentage of edu-level for suggested and holders
 
     Args:
         df (pd.DataFrame): dataset of the developers survey
-        plot (bool, optional): [Whether or not plot the result]. Defaults to True.
-        
+        title (str, optional): plot title. Defaults to None.
+        plot (bool, optional): Whether or not plot the result. Defaults to True.
+
     Returns:
-        None
+        [type]: [description]
     """
     couEduSplit = df[df.CousinEducation.notna()].CousinEducation.str.split('; ', n=-1, expand=True)
     series_lst = []
     for i in range(4):
         series_lst.append(couEduSplit[i].value_counts().sort_index())
-    cc = pd.concat(series_lst, axis=1).sum(axis=1)
-    cc_relative = (cc/cc.sum()).sort_values()
+    suggested_agg = pd.concat(series_lst, axis=1).sum(axis=1)
+    suggetsed_relative = (suggested_agg/suggested_agg.sum()).sort_values()
     
-    print(cc_relative.sort_values(ascending=False))
+    suggetsed_relative_vals = suggetsed_relative.sort_values(ascending=False)
+    
     
     if plot:
         plt.figure(figsize=(8, 6))
-        plt.barh(cc_relative.index, cc_relative.values, height=.6)
+        plt.barh(suggetsed_relative.index, suggetsed_relative.values, height=.6)
 
-        plt.title("Method of Educating Suggested", fontsize=16)
+        plt.title(title, fontsize=16)
         plt.ylabel("Methods", fontweight='bold', fontsize=12)
         plt.xlabel('Relative Freq.', fontweight='bold', fontsize=12, labelpad=12);
+        
+    return suggetsed_relative_vals
         
         
 def higher_ed_mapping(df, edu_levels):
