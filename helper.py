@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pprint import pprint
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
 
 
 def viz_freq(df, feature_name, top_k=None, norm=True, asc=False):
@@ -99,7 +102,7 @@ def higher_ed_mapping(df, edu_levels):
    
    
 def ord_cat_convert(df, col, order_list):
-    """[summary]
+    """Convert a categorical (nominal) variable into ordinal one.
 
     Args:
         df (pd.DataFrame): dataset of the developers survey
@@ -156,4 +159,85 @@ def cat_na_filter(df, bound=0, print_count=True, print_cols=False):
         if print_cols:
             cols_name = df[cat_vars].columns[df[cat_vars].isna().mean()>=bound]
             pprint(cols_name.to_list())
+            
+def create_dummy_df(df, cat_cols, dummy_na=True):
+    '''Create dummied dataframe by one-hot encoding.
+    
+    INPUT:
+    df - raw pandas dataframe with all variables
+    cat_cols - list of strings that are associated with names of the categorical columns
+    dummy_na - Bool holding whether you want to dummy NA vals of categorical columns or not
+    
+    OUTPUT:
+    df - a new dataframe that has the following characteristics:
+            1. contains all columns that were not specified as categorical
+            2. removes all the original columns in cat_cols
+            3. dummy columns for each of the categorical columns in cat_cols
+            4. if dummy_na is True - it also contains dummy columns for the NaN values
+            5. Use a prefix of the column name with an underscore (_) for separating 
+    '''
+    for col in  cat_cols:
+        # for each cat add dummy var, drop original column
+        df = pd.concat([df.drop(col, axis=1), pd.get_dummies(df[col], 
+                                                             prefix=col, 
+                                                             prefix_sep='_', 
+                                                             drop_first=True, 
+                                                             dummy_na=dummy_na)], axis=1)
+    return df
+
+def clean_fit_linear_mod(df, response_col, dummy_na, test_size=.3, random_state=42):
+    """Use imputed numeric variables and one-hot-encoded catgorical variables for prediction
+
+    Args:
+        df (pd.DataFrame): dataset of the developers survey.
+        response_col (str): target variable name you want to predict on.
+        dummy_na (bool): whether to encode np.nan as dummies.
+        test_size (float, optional): percentage of testing data. Defaults to .3.
+        random_state (int, optional): an int that is provided as the random state for 
+          splitting the data into training and test. Defaults to 42.
+          
+
+    Returns:
+        train_score - float - r2 score on the train data
+        test_score - float - r2 score on the test data
+        lm_model - model object from sklearn
+        X_train, X_test, y_train, y_test - output from sklearn train test split used for optimal model
+    """
+    
+    # Drop the rows with missing response values
+    df = df.dropna(subset=[response_col])
+    
+    # Drop columns with NaN for all the values
+    df = df.dropna(how='all', axis=1)
+    
+    # Use create_dummy_df to dummy categorical columns
+    cat_cols = df.select_dtypes('object').columns
+    df = create_dummy_df(df, cat_cols, dummy_na=dummy_na)
+    
+    # Fill the mean of the column for any missing values
+    fill_mean = lambda col: col.fillna(col.mean())
+    df = df.apply(fill_mean)
+    
+    # Split your data into an X matrix and a response vector y
+    X = df.drop(columns=[response_col])
+    y = df[response_col]
+    
+    # Create training and test sets of data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
+    
+    # Instantiate a LinearRegression model with normalized data
+    lm = LinearRegression(normalize=True)
+    
+    # Fit the model to the training data
+    lm.fit(X_train, y_train)
+    
+    # Predict response and calculate metric on the training data
+    y_train_preds = lm.predict(X_train)
+    train_score = r2_score(y_train, y_train_preds)
+    
+    # Predict response and calculate metric on the testing data
+    y_test_preds = lm.predict(X_test)
+    test_score = r2_score(y_test, y_test_preds)
+    
+    return train_score, test_score, lm, X_train, X_test, y_train, y_test
     
