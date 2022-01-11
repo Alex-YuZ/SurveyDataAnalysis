@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from pprint import pprint
 
 
 def viz_freq(df, feature_name, top_k=None, norm=True, asc=False):
@@ -119,3 +120,40 @@ def job_satisfaction_byGroup(df, by_col):
     res_srs = df.groupby(by_col).JobSatisfaction.mean().sort_values(ascending=False)
     res_df = res_srs.rename('Avg_JobSatisfaction').to_frame()
     print(res_df)
+    
+
+def cat_na_filter(df, bound=0, print_count=True, print_cols=False):
+    """print out categorical variables with certain amount of missing values.
+
+    Args:
+        df (pd.DataFrame): dataset of the developers survey
+        bound (int or float, optional): pct of missingness. Defaults to 0.
+        print_count (bool, optional): print out the count number only. Defaults to True.
+        print_cols (bool, optional): print out the variable names. Defaults to False.
+
+    Returns:
+        None
+    """
+    cat_vars = df.select_dtypes('object').columns
+    
+    if bound < 0:
+        return "ERROR: bound must be non-negative!"
+    
+    if bound==0:
+        if print_count:
+            count = len(df[cat_vars].columns[df[cat_vars].isna().mean()==0])
+            print("There are {} categorical variables with no misisng values.".format(count))
+
+        if print_cols:
+            cols_name = df[cat_vars].columns[df[cat_vars].isna().mean()==0]
+            pprint(cols_name.to_list())
+            
+    else:
+        if print_count:
+            count = len(df[cat_vars].columns[df[cat_vars].isna().mean()>=bound])
+            print("There are {0} categorical variables with with more than {1:.2%} of missing values.".format(count, bound))
+
+        if print_cols:
+            cols_name = df[cat_vars].columns[df[cat_vars].isna().mean()>=bound]
+            pprint(cols_name.to_list())
+    
