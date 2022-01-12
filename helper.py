@@ -255,21 +255,21 @@ def find_optimal_lm(X, y, cutoffs, plot=True, test_size=.3, random_state=42):
     """
     train_scores, test_scores, results, num_feats = dict(), dict(), dict(), dict()
     for cut in cutoffs:
-        reduce_X1 = X.iloc[:, np.where(X.sum() > cut)[0]]
-        num_feats[cut] = reduce_X1.shape[1]
+        reduce_X = X.iloc[:, np.where(X.sum() > cut)[0]]
+        num_feats[cut] = reduce_X.shape[1]
 
-        X_train1, X_test1, y_train1, y_test1 = train_test_split(reduce_X1, y, test_size=test_size, random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(reduce_X, y, test_size=test_size, random_state=random_state)
 
         lm = LinearRegression(normalize=True)
-        lm.fit(X_train1, y_train1)
+        lm.fit(X_train, y_train)
 
-        y_train_preds = lm.predict(X_train1)
-        y_test_preds = lm.predict(X_test1)
+        y_train_preds = lm.predict(X_train)
+        y_test_preds = lm.predict(X_test)
 
-        train_score1 = r2_score(y_train1, y_train_preds)
+        train_score1 = r2_score(y_train, y_train_preds)
         train_scores[cut] = train_score1
 
-        test_score1 = r2_score(y_test1, y_test_preds)
+        test_score1 = r2_score(y_test, y_test_preds)
         test_scores[cut] = test_score1
         results[cut] = test_score1
 
@@ -305,4 +305,25 @@ def find_optimal_lm(X, y, cutoffs, plot=True, test_size=.3, random_state=42):
         plt.xlabel("Number of Features")
         plt.ylabel("R2 Score");
         
-        
+    return X_train, X_test, y_train, y_test, lm
+
+def coef_weights(lm, X_train):
+    """Aanalyze impact of each variable on the salary.
+
+    Args:
+        lm (sklearn.linear_model): optimal linear regression model
+        X_train (pd.DataFrame): predictor matrix from the optimal linear model
+
+    Returns:
+        pd.DataFrame: coefficient matrix of the predictors
+    """
+    col_names = X_train.columns
+    coeffs = lm.coef_
+    
+    weights_df = pd.DataFrame()
+    weights_df['feature_names'] = col_names
+    weights_df['weights'] = coeffs
+    weights_df['abs_weights'] = np.abs(coeffs)
+    weights_df = weights_df.sort_values('abs_weights', ascending=False)
+    
+    return weights_df
