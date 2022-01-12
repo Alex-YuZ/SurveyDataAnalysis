@@ -225,7 +225,7 @@ def clean_fit_linear_mod(df, response_col, dummy_na, test_size=.3, random_state=
     # Create training and test sets of data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     
-    # Instantiate a LinearRegression model with normalized data
+    # Instantiate a LinearRegression model with normalized data0
     lm = LinearRegression(normalize=True)
     
     # Fit the model to the training data
@@ -241,3 +241,68 @@ def clean_fit_linear_mod(df, response_col, dummy_na, test_size=.3, random_state=
     
     return train_score, test_score, lm, X_train, X_test, y_train, y_test
     
+    
+def find_optimal_lm(X, y, cutoffs, plot=True, test_size=.3, random_state=42):
+    """Find the optimal number of features for linear prediction model
+
+    Args:
+        X (pd.DataFrame): clean predictor variable maxtrix
+        y (pd.DataFrame): response variable matrix
+        cutoffs (list): list of ints, cutoff for number of non-zero values in dummy categorical vars
+        plot (bool, optional): [description]. Defaults to True.
+        test_size (float, optional): determines the proportion of data as test data. Defaults to .3.
+        random_state (int, optional): controls random state for train_test_split. Defaults to 42.
+    """
+    train_scores, test_scores, results, num_feats = dict(), dict(), dict(), dict()
+    for cut in cutoffs:
+        reduce_X1 = X.iloc[:, np.where(X.sum() > cut)[0]]
+        num_feats[cut] = reduce_X1.shape[1]
+
+        X_train1, X_test1, y_train1, y_test1 = train_test_split(reduce_X1, y, test_size=test_size, random_state=random_state)
+
+        lm = LinearRegression(normalize=True)
+        lm.fit(X_train1, y_train1)
+
+        y_train_preds = lm.predict(X_train1)
+        y_test_preds = lm.predict(X_test1)
+
+        train_score1 = r2_score(y_train1, y_train_preds)
+        train_scores[cut] = train_score1
+
+        test_score1 = r2_score(y_test1, y_test_preds)
+        test_scores[cut] = test_score1
+        results[cut] = test_score1
+
+    best_cut = max(results, key=results.get)
+    opt_num_feats = num_feats[best_cut]
+    best_test_score = test_scores[best_cut]
+    best_train_score = train_scores[best_cut]
+
+    print("Best Cut Number: {}.".format(best_cut))
+    print("Optimal Number of Features: {}.".format(opt_num_feats))
+    print("Test Score(Highest) on Best Cut: {:.3f}.".format(best_test_score))
+    print("Corresponding Train Score: {:.3f}.".format(best_train_score))
+    
+    if plot:
+        plt.plot(list(num_feats.values()), 
+                 list(train_scores.values()), 
+                 color='blue', 
+                 label='train_score', 
+                 marker='o', 
+                 markersize=5)
+        
+        plt.plot(list(num_feats.values()), 
+                 list(test_scores.values()), 
+                 color='red', 
+                 label='test_score', 
+                 marker='o', 
+                 markersize=5)
+        
+        plt.axvline(x=opt_num_feats, color='red', linewidth=1, linestyle='--');
+        
+        plt.legend()
+        plt.title("R2 Score by Feature Number")
+        plt.xlabel("Number of Features")
+        plt.ylabel("R2 Score");
+        
+        
